@@ -97,6 +97,9 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
     if raw is None or raw == 0x7FFF:
         return None
     return round(raw / 10.0, 1)
+       except Exception as e:
+        _LOGGER.error("Failed to get temperature for index %s: %s", idx, e)
+        return None
 
 
     @property
