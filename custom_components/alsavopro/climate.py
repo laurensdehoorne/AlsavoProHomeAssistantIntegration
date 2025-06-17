@@ -89,13 +89,15 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
     def target_temperature_step(self):
         return PRECISION_TENTHS
 
-    def _get_temperature_from_status(self, idx):
-        if not self.coordinator.data or "status" not in self.coordinator.data:
-            return None
-        raw = self.coordinator.data["status"].get(idx)
-        if raw is None or raw == 0x7FFF:
-            return None
-        return round(raw / 10.0, 1)
+   def _get_temperature_from_status(self, idx):
+    alsavo = self.coordinator.data
+    if not alsavo or not alsavo.is_online:
+        return None
+    raw = alsavo.get_status_value(idx)
+    if raw is None or raw == 0x7FFF:
+        return None
+    return round(raw / 10.0, 1)
+
 
     @property
     def min_temp(self):
