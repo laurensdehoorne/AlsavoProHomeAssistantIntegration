@@ -42,68 +42,106 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
 
     def __init__(self, coordinator: AlsavoProDataCoordinator):
         super().__init__(coordinator)
+        self.coordinator = coordinator
         self._data_handler = coordinator.data_handler
-        self._attr_unique_id = self._data_handler.unique_id
-        self._attr_name = self._data_handler.name
+        self._name = self._data_handler.name
 
     @property
     def supported_features(self):
         return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
 
     @property
+    def unique_id(self):
+        return self._data_handler.unique_id
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
     def available(self) -> bool:
-        return self.coordinator.last_update_success and self.coordinator.data is not None
+        return self._data_handler.is_online
 
     @property
     def hvac_mode(self):
-        if not self.coordinator.data["is_power_on"]:
-            return HVACMode.OFF
-
-        return {
+        operating_mode_map = {
             0: HVACMode.COOL,
             1: HVACMode.HEAT,
-            2: HVACMode.AUTO,
-        }.get(self.coordinator.data["operating_mode"], HVACMode.AUTO)
+            2: HVACMode.AUTO
+        }
+        if not self._data_handler.is_power_on:
+            return HVACMode.OFF
+        return operating_mode_map.get(self._data_handler.operating_mode)
+
+    @property
+    def preset_mode(self):
+        return POWER_MODE_MAP.get(self._data_handler.power_mode)
+
+    @property
+    def icon(self):
+        hvac_mode_icons = {
+            HVACMode.HEAT: "mdi:fire",
+            HVACMode.COOL: "mdi:snowflake",
+            HVACMode.AUTO: "mdi:refresh-auto"
+        }
+        return hvac_mode_icons.get(self.hvac_mode, "mdi:hvac-off")
 
     @property
     def hvac_modes(self):
         return [HVACMode.HEAT, HVACMode.COOL, HVACMode.AUTO, HVACMode.OFF]
 
     @property
-    def preset_mode(self):
-        return POWER_MODE_MAP.get(self.coordinator.data["power_mode"])
-
-    @property
     def preset_modes(self):
-        return ["Silent", "Smart", "Powerful"]
+        return ['Silent', 'Smart', 'Powerful']
 
-    @property
-    def icon(self):
-        return {
-            HVACMode.HEAT: "mdi:fire",
-            HVACMode.COOL: "mdi:snowflake",
-            HVACMode.AUTO: "mdi:refresh-auto",
-        }.get(self.hvac_mode, "mdi:hvac-off")
+    async def async_set_hvac_mode(self, hvac_mode):
+        hvac_mode_actions = {
+            HVACMode.OFF: self._data_handler.set_power_off,
+            HVACMode.COOL: self._data_handler.set_cooling_mode,
+            HVACMode.HEAT: self._data_handler.set_heating_mode,
+            HVACMode.AUTO: self._data_handler.set_auto_mode
+        }
+        action = hvac_mode_actions.get(hvac_mode)
+        if action:
+            await action()
+            await self.coordinator.async_request_refresh()
+
+    async def async_set_preset_mode(self, preset_mode):
+        preset_mode_to_power_mode = {
+            'Silent': 0,
+            'Smart': 1,
+            'Powerful': 2
+        }
+        power_mode = preset_mode_to_power_mode.get(preset_mode)
+        if power_mode is not None:
+            await self._data_handler.set_power_mode(power_mode)
+            await self.coordinator.async_request_refresh()
 
     @property
     def temperature_unit(self):
         return UnitOfTemperature.CELSIUS
 
+    def _get_temperature_from_status(self, idx):
+        raw = self.coordinator.data.get("status", {}).get(idx)
+        if raw is None or raw == 0x7FFF:
+            return None
+        return round(raw / 10.0, 1)
+
     @property
     def min_temp(self):
-        return self.coordinator.data["min_temp"]
+        return self._get_temperature_from_status(56)
 
     @property
     def max_temp(self):
-        return self.coordinator.data["max_temp"]
+        return self._get_temperature_from_status(55)
 
     @property
     def current_temperature(self):
-        return self.coordinator.data["water_in_temperature"]
+        return self._data_handler.water_in_temperature
 
     @property
     def target_temperature(self):
-        return self.coordinator.data["target_temperature"]
+        return self._data_handler.target_temperature
 
     @property
     def target_temperature_step(self):
@@ -116,28 +154,6 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         await self._data_handler.set_target_temperature(temperature)
         await self.coordinator.async_request_refresh()
 
-    async def async_set_hvac_mode(self, hvac_mode):
-        actions = {
-            HVACMode.OFF: self._data_handler.set_power_off,
-            HVACMode.COOL: self._data_handler.set_cooling_mode,
-            HVACMode.HEAT: self._data_handler.set_heating_mode,
-            HVACMode.AUTO: self._data_handler.set_auto_mode,
-        }
-        action = actions.get(hvac_mode)
-        if action:
-            await action()
-            await self.coordinator.async_request_refresh()
-
-    async def async_set_preset_mode(self, preset_mode):
-        modes = {
-            "Silent": 0,
-            "Smart": 1,
-            "Powerful": 2,
-        }
-        power_mode = modes.get(preset_mode)
-        if power_mode is not None:
-            await self._data_handler.set_power_mode(power_mode)
-            await self.coordinator.async_request_refresh()
-
     async def async_update(self):
-        await self.coordinator.async_request_refresh()
+        self._data_handler = self.coordinator.data_handler
+
