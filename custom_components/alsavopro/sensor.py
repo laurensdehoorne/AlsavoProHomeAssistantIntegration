@@ -4,15 +4,8 @@ from homeassistant.components.sensor import (
 )
 
 from . import AlsavoProDataCoordinator
-from .const import (
-    DOMAIN
-)
-
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from .const import DOMAIN
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -36,7 +29,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
         AlsavoProSensor(coordinator, None, "Alarm code 1", "", 48, False, "mdi:bell-alert"),
         AlsavoProSensor(coordinator, None, "Alarm code 2", "", 49, False, "mdi:bell-alert"),
         AlsavoProSensor(coordinator, None, "Alarm code 3", "", 50, False, "mdi:bell-alert"),
-        AlsavoProSensor(coordinator, None, "Alarm code 4", "", 51, False, "mdi:bell-alert"),  # Removed duplicate
+        AlsavoProSensor(coordinator, None, "Alarm code 4", "", 51, False, "mdi:bell-alert"),
         AlsavoProSensor(coordinator, None, "System status code", "", 52, False, "mdi:state-machine"),
         AlsavoProSensor(coordinator, None, "System running code", "", 53, False, "mdi:state-machine"),
         AlsavoProSensor(coordinator, None, "Device type", "", 64, False, "mdi:heat-pump"),
@@ -71,14 +64,13 @@ class AlsavoProSensor(CoordinatorEntity, SensorEntity):
         self._from_config = from_config
         self._name = name
 
-        # Ensure unique and valid ID
         slug_name = name.lower().replace(" ", "_")
         self._attr_name = f"{DOMAIN}_{self._data_handler.name}_{name}"
         self._attr_unique_id = f"{self._data_handler.unique_id}_{slug_name}_{idx}"
 
     @property
     def available(self) -> bool:
-        return self.coordinator.last_update_success and self.coordinator.data is not None
+        return self.coordinator.last_update_success and self._data_handler.is_online
 
     @property
     def native_value(self):
@@ -90,12 +82,11 @@ class AlsavoProSensor(CoordinatorEntity, SensorEntity):
                 return None
             return round(raw / 10.0, 1)
 
-        data = self.coordinator.data
         try:
             if self._from_config:
-                raw = data.get("config", {}).get(self._data_idx)
+                raw = self._data_handler.get_config_value(self._data_idx)
             else:
-                raw = data.get("status", {}).get(self._data_idx)
+                raw = self._data_handler.get_status_value(self._data_idx)
 
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 return get_temperature(raw)
@@ -103,8 +94,6 @@ class AlsavoProSensor(CoordinatorEntity, SensorEntity):
 
         except Exception:
             return None
-
-
 
 
 class AlsavoProErrorSensor(CoordinatorEntity, SensorEntity):
@@ -118,18 +107,20 @@ class AlsavoProErrorSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        return self.coordinator.last_update_success and self.coordinator.data is not None
+        return self.coordinator.last_update_success and self._data_handler.is_online
 
     @property
     def native_value(self):
-        data = self.coordinator.data
-        if not data or "status" not in data:
+        if not self.available:
             return None
 
         errors = []
-        for i in range(48, 52):  # Error codes
-            code = data["status"].get(i)
-            if code and code != 0:
-                errors.append(f"E{i - 47}: {code}")
+        try:
+            for i in range(48, 52):
+                code = self._data_handler.get_status_value(i)
+                if code and code != 0:
+                    errors.append(f"E{i - 47}: {code}")
+        except Exception:
+            return None
 
         return ", ".join(errors) if errors else "No errors"
