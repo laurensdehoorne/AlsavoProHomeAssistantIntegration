@@ -5,6 +5,7 @@ from datetime import timedelta
 import async_timeout
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
+    UpdateFailed,
 )
 
 from homeassistant.const import (
@@ -28,7 +29,7 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass, entry):
-    """Set up the Alsavo Pro heater."""
+    """Set up the Alsavo Pro heater from a config entry."""
     name = entry.data.get(CONF_NAME)
     serial_no = entry.data.get(SERIAL_NO)
     ip_address = entry.data.get(CONF_IP_ADDRESS)
@@ -36,15 +37,22 @@ async def async_setup_entry(hass, entry):
     password = entry.data.get(CONF_PASSWORD)
 
     data_handler = AlsavoPro(name, serial_no, ip_address, port_no, password)
-    await data_handler.update()
+
+    try:
+        await data_handler.update()
+    except Exception as ex:
+        _LOGGER.exception("Initial connection to Alsavo Pro failed: %s", ex)
+        return False
+
     data_coordinator = AlsavoProDataCoordinator(hass, data_handler)
 
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
+
     hass.data[DOMAIN][entry.entry_id] = data_coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "climate"])
-    
+
     return True
 
 
@@ -53,18 +61,20 @@ async def async_unload_entry(hass, config_entry):
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, ["climate", "sensor"]
     )
+    if unload_ok:
+        hass.data[DOMAIN].pop(config_entry.entry_id, None)
     return unload_ok
 
 
 class AlsavoProDataCoordinator(DataUpdateCoordinator):
+    """Data coordinator for Alsavo Pro."""
+
     def __init__(self, hass, data_handler):
-        """Initialize my coordinator."""
+        """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
-            # Name of the data. For logging purposes.
             name="AlsavoPro",
-            # Polling interval. Will only be polled if there are subscribers.
             update_interval=timedelta(seconds=15),
         )
         self.data_handler = data_handler
@@ -76,4 +86,6 @@ class AlsavoProDataCoordinator(DataUpdateCoordinator):
                 await self.data_handler.update()
                 return self.data_handler
         except Exception as ex:
-            _LOGGER.debug("_async_update_data timed out")
+            _LOGGER.exception("Failed to update Alsavo Pro data: %s", ex)
+            raise UpdateFailed(f"Error communicating with Alsavo Pro: {ex}") from ex
+
