@@ -65,7 +65,6 @@ async def async_unload_entry(hass, config_entry):
         hass.data[DOMAIN].pop(config_entry.entry_id, None)
     return unload_ok
 
-
 class AlsavoProDataCoordinator(DataUpdateCoordinator):
     """Data coordinator for Alsavo Pro."""
 
@@ -80,14 +79,13 @@ class AlsavoProDataCoordinator(DataUpdateCoordinator):
         self.data_handler = data_handler
 
     async def _async_update_data(self):
-    _LOGGER.debug("_async_update_data")
-    try:
-        async with async_timeout.timeout(10):
-            await self.data_handler.update()
-            if self.data_handler.is_online:
-                return self.data_handler
-            raise UpdateFailed("Device offline or returned no data")
-    except Exception as ex:
-        _LOGGER.error(f"_async_update_data failed: {ex}")
-        raise UpdateFailed(f"Update failed: {ex}") from ex
-
+        _LOGGER.debug("_async_update_data")
+        try:
+            async with async_timeout.timeout(10):
+                await self.data_handler.update()
+                if self.data_handler.is_online:
+                    return self.data_handler
+                raise UpdateFailed("Device offline or returned no data")
+        except Exception as ex:
+            _LOGGER.error(f"_async_update_data failed: {ex}")
+            raise UpdateFailed(f"Update failed: {ex}") from ex
