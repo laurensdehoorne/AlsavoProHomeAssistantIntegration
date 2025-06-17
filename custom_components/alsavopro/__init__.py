@@ -80,12 +80,14 @@ class AlsavoProDataCoordinator(DataUpdateCoordinator):
         self.data_handler = data_handler
 
     async def _async_update_data(self):
-        _LOGGER.debug("_async_update_data")
-        try:
-            async with async_timeout.timeout(10):
-                await self.data_handler.update()
+    _LOGGER.debug("_async_update_data")
+    try:
+        async with async_timeout.timeout(10):
+            await self.data_handler.update()
+            if self.data_handler.is_online:
                 return self.data_handler
-        except Exception as ex:
-            _LOGGER.exception("Failed to update Alsavo Pro data: %s", ex)
-            raise UpdateFailed(f"Error communicating with Alsavo Pro: {ex}") from ex
+            raise UpdateFailed("Device offline or returned no data")
+    except Exception as ex:
+        _LOGGER.error(f"_async_update_data failed: {ex}")
+        raise UpdateFailed(f"Update failed: {ex}") from ex
 
