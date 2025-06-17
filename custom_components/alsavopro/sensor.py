@@ -215,53 +215,50 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 
 class AlsavoProSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator: AlsavoProDataCoordinator,
-                 device_class: SensorDeviceClass,
-                 name: str,
-                 unit: str,
-                 idx: int,
-                 from_config: bool,
-                 icon: str):
+    def __init__(
+        self,
+        coordinator: AlsavoProDataCoordinator,
+        device_class: SensorDeviceClass,
+        name: str,
+        unit: str,
+        idx: int,
+        from_config: bool,
+        icon: str,
+    ):
         super().__init__(coordinator)
-        self.data_coordinator = coordinator
-        self._data_handler = self.data_coordinator.data_handler
-        self._name = name
+        self._data_handler = coordinator.data_handler
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
-        self._dataIdx = idx
-        self._config = from_config
-        self._icon = icon
+        self._attr_icon = icon
+        self._data_idx = idx
+        self._from_config = from_config
+        self._name = name
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"{DOMAIN}_{self._data_handler.name}_{self._name}"
+        self._attr_name = f"{DOMAIN}_{self._data_handler.name}_{name}"
+        self._attr_unique_id = f"{self._data_handler.unique_id}_{name}"
 
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will reflect this.
     @property
     def available(self) -> bool:
-        """Return True if roller and hub is available."""
-        return self._data_handler.is_online
-
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return f"{self._data_handler.unique_id}_{self._name}"
+        return self.coordinator.last_update_success and self.coordinator.data is not None
 
     @property
     def native_value(self):
-        # Hent data fra data_handler her
+        if not self.available:
+            return None
+
+        data = self.coordinator.data
+
         if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-            if self._config:
-                return self._data_handler.get_temperature_from_config(self._dataIdx)
+            if self._from_config:
+                return data["config"].get(f"temp_{self._data_idx}")
             else:
-                return self._data_handler.get_temperature_from_status(self._dataIdx)
+                return data["status"].get(f"temp_{self._data_idx}")
         else:
-            if self._config:
-                return self._data_handler.get_config_value(self._dataIdx)
+            if self._from_config:
+                return data["config"].get(f"val_{self._data_idx}")
             else:
-                return self._data_handler.get_status_value(self._dataIdx)
+                return data["status"].get(f"val_{self._data_idx}")
+
 
     @property
     def icon(self):
@@ -269,13 +266,20 @@ class AlsavoProSensor(CoordinatorEntity, SensorEntity):
 
 
 class AlsavoProErrorSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator: AlsavoProDataCoordinator,
-                 name: str):
+    def __init__(self, coordinator: AlsavoProDataCoordinator, name: str):
         super().__init__(coordinator)
-        self.data_coordinator = coordinator
-        self._data_handler = self.data_coordinator.data_handler
-        self._name = name
-        self._icon = "mdi:alert"
+        self._data_handler = coordinator.data_handler
+        self._attr_icon = "mdi:alert"
+        self._attr_name = f"{DOMAIN}_{self._data_handler.name}_{name}"
+        self._attr_unique_id = f"{self._data_handler.unique_id}_{name}"
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success and self.coordinator.data is not None
+
+    @property
+    def native_value(self):
+        return self.coordinator.data.get("errors") if self.available else None
 
     @property
     def name(self):
