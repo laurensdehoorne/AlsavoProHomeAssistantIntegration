@@ -246,59 +246,76 @@ class AlsavoProSensor(CoordinatorEntity, SensorEntity):
         if not self.available:
             return None
 
-        data = self.coordinator.data
+        # Inline implementation of get_temperature_from_status
+        def get_temperature_from_status(idx):
+            raw = self.coordinator.data.get("status", {}).get(idx)
+            if raw is None or raw == 0x7FFF:
+                return None
+            return round(raw / 10.0, 1)
 
+        # Inline implementation of get_temperature_from_config
+        def get_temperature_from_config(idx):
+            raw = self.coordinator.data.get("config", {}).get(idx)
+            if raw is None or raw == 0x7FFF:
+                return None
+            return round(raw / 10.0, 1)
+
+        # Inline implementation of get_status_value
+        def get_status_value(idx):
+            return self.coordinator.data.get("status", {}).get(idx)
+
+        # Inline implementation of get_config_value
+        def get_config_value(idx):
+            return self.coordinator.data.get("config", {}).get(idx)
+
+        # Determine value based on config/status and data type
         if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
             if self._from_config:
-                return data["config"].get(f"temp_{self._data_idx}")
+                return get_temperature_from_config(self._data_idx)
             else:
-                return data["status"].get(f"temp_{self._data_idx}")
+                return get_temperature_from_status(self._data_idx)
         else:
             if self._from_config:
-                return data["config"].get(f"val_{self._data_idx}")
+                return get_config_value(self._data_idx)
             else:
-                return data["status"].get(f"val_{self._data_idx}")
+                return get_status_value(self._data_idx)
 
-
-    @property
-    def icon(self):
-        return self._icon
 
 
 class AlsavoProErrorSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: AlsavoProDataCoordinator, name: str):
         super().__init__(coordinator)
-        self._data_handler = coordinator.data_handler
-        self._attr_icon = "mdi:alert"
-        self._attr_name = f"{DOMAIN}_{self._data_handler.name}_{name}"
-        self._attr_unique_id = f"{self._data_handler.unique_id}_{name}"
-
-    @property
-    def available(self) -> bool:
-        return self.coordinator.last_update_success and self.coordinator.data is not None
-
-    @property
-    def native_value(self):
-        return self.coordinator.data.get("errors") if self.available else None
+        self.data_coordinator = coordinator
+        self._name = name
+        self._icon = "mdi:alert"
+        self._data_handler = self.data_coordinator.data_handler
 
     @property
     def name(self):
-        """Return the name of the sensor."""
         return f"{DOMAIN}_{self._data_handler.name}_{self._name}"
 
     @property
     def unique_id(self):
-        """Return a unique ID."""
         return f"{self._data_handler.unique_id}_{self._name}"
 
     @property
+    def available(self) -> bool:
+        return self._data_handler.is_online
+
+    @property
     def native_value(self):
-        return self._data_handler.errors
+        status = self.data_coordinator.data.get("status", {})
+        errors = []
+        for i in range(48, 52):  # Error code indexes: 48, 49, 50, 51
+            code = status.get(i)
+            if code is not None and code != 0:
+                errors.append(f"E{i - 47}: {code}")
+        return ", ".join(errors) if errors else "No errors"
 
     @property
     def icon(self):
         return self._icon
 
     async def async_update(self):
-        """Get the latest data."""
         self._data_handler = self.data_coordinator.data_handler
+
