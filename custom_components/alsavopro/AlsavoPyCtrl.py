@@ -4,8 +4,7 @@ import random
 import struct
 from datetime import datetime, timezone
 from enum import Enum
-from custom_components.alsavopro.const import MODE_TO_CONFIG, NO_WATER_FLUX, WATER_TEMP_TOO_LOW, MAX_UPDATE_RETRIES, \
-     MAX_SET_CONFIG_RETRIES
+from custom_components.alsavopro.const import MODE_TO_CONFIG, NO_WATER_FLUX, WATER_TEMP_TOO_LOW, MAX_UPDATE_RETRIES, MAX_SET_CONFIG_RETRIES
 from .udpclient import UDPClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,21 +27,19 @@ class AlsavoPro:
         self._online = False
 
     async def update(self):
-        _LOGGER.debug(f"update")
-        try:
-            await self._session.connect(self._ip_address, int(self._port_no), int(self._serial_no), self._password)
-            data = await self._session.query_all()
-            if data is not None:
-                self._data = data
-        except Exception as e:
-            if self._update_retries < MAX_UPDATE_RETRIES:
-                self._update_retries += 1
-                await self.update()
-                self._online = True
-            else:
-                self._update_retries = 0
-                _LOGGER.error(f"Unable to update: {e}")
-                self._online = False
+        _LOGGER.debug("update")
+        for attempt in range(MAX_UPDATE_RETRIES):
+            try:
+                await self._session.connect(self._ip_address, int(self._port_no), int(self._serial_no), self._password)
+                data = await self._session.query_all()
+                if data is not None:
+                    self._data = data
+                    self._online = True
+                    return
+            except Exception as e:
+                _LOGGER.warning(f"Update attempt {attempt + 1} failed: {e}")
+        _LOGGER.error("Unable to update after max retries")
+        self._online = False
 
     async def set_config(self, idx: int, value: int):
         _LOGGER.debug(f"set_config({idx}, {value})")
@@ -228,8 +225,7 @@ class AuthIntro:
     def pack(self):
         packed_hdr = self.hdr.pack()
         packed_uuid = struct.pack('!IIII', *self._uuid)
-        packed_data = struct.pack('!BBBBIQ', self.act1, self.act2, self.act3, self.act4, self.clientToken,
-                                  self.pumpSerial) + packed_uuid + self.timestamp.pack()
+        packed_data = struct.pack('!BBBBIQ', self.act1, self.act2, self.act3, self.act4, self.clientToken, self.pumpSerial) + packed_uuid + self.timestamp.pack()
         return packed_hdr + packed_data
 
 
@@ -466,8 +462,7 @@ class AlsavoSocketCom:
         self.DSIS = auth_challenge.hdr.dsid
         self.serverToken = auth_challenge.serverToken
 
-        _LOGGER.debug(f"Received handshake, CSID={hex(self.CSID)}, DSID={hex(self.DSIS)}, "
-                      f"server token {hex(self.serverToken)}")
+        _LOGGER.debug(f"Received handshake, CSID={hex(self.CSID)}, DSID={hex(self.DSIS)}, "f"server token {hex(self.serverToken)}")
 
         ctx = hashlib.md5()
         ctx.update(self.clientToken.to_bytes(4, "big"))
