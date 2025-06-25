@@ -1,4 +1,3 @@
-"""Support for Alsavo Pro wifi-enabled pool heaters."""
 import logging
 
 from homeassistant.components.climate import (
@@ -14,7 +13,6 @@ from homeassistant.const import (
     CONF_IP_ADDRESS,
     CONF_PORT,
     CONF_NAME,
-    PRECISION_TENTHS,
     UnitOfTemperature,
 )
 
@@ -72,8 +70,7 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         """Return hvac operation i.e. heat, cool mode."""
         operating_mode_map = {
             0: HVACMode.COOL,
-            1: HVACMode.HEAT,
-            2: HVACMode.AUTO
+            1: HVACMode.HEAT
         }
 
         if not self._data_handler.is_power_on:
@@ -91,8 +88,7 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         """Return nice icon for heater."""
         hvac_mode_icons = {
             HVACMode.HEAT: "mdi:fire",
-            HVACMode.COOL: "mdi:snowflake",
-            HVACMode.AUTO: "mdi:refresh-auto"
+            HVACMode.COOL: "mdi:snowflake"
         }
 
         return hvac_mode_icons.get(self.hvac_mode, "mdi:hvac-off")
@@ -100,7 +96,7 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
     @property
     def hvac_modes(self):
         """Return the list of available hvac operation modes."""
-        return [HVACMode.HEAT, HVACMode.COOL, HVACMode.AUTO, HVACMode.OFF]
+        return [HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF]
 
     @property
     def preset_modes(self):
@@ -112,8 +108,7 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         hvac_mode_actions = {
             HVACMode.OFF: self._data_handler.set_power_off,
             HVACMode.COOL: self._data_handler.set_cooling_mode,
-            HVACMode.HEAT: self._data_handler.set_heating_mode,
-            HVACMode.AUTO: self._data_handler.set_auto_mode
+            HVACMode.HEAT: self._data_handler.set_heating_mode
         }
 
         action = hvac_mode_actions.get(hvac_mode)
@@ -124,9 +119,9 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
     async def async_set_preset_mode(self, preset_mode):
         """Set hvac preset mode."""
         preset_mode_to_power_mode = {
-            'Silent': 0,     # Silent
-            'Smart': 1,  # Smart
-            'Powerful': 2     # Powerful
+            'Silent': 0,
+            'Smart': 1,
+            'Powerful': 2
         }
 
         power_mode = preset_mode_to_power_mode.get(preset_mode)
@@ -162,7 +157,7 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
     @property
     def target_temperature_step(self):
         """Return the supported step of target temperature."""
-        return PRECISION_TENTHS
+        return 1.0
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
