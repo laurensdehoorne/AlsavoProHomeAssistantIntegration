@@ -1,5 +1,7 @@
 import asyncio
+import logging
 
+_LOGGER = logging.getLogger(__name__)
 
 class UDPClient:
     """ Async UDP client """
