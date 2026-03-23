@@ -12,7 +12,7 @@ In Home Assistant, create a folder under *custom_components* named *AlsavoPro* a
 Restart Home Assistant and go to *Devices and Services* and press *+Add integration*.
 Search for *AlsavoPro* and add it.
 #### HACS Custom Repository
-In HACS, add a custom repository and use https://github.com/goev/AlsavoProHomeAssistantIntegration
+In HACS, add a custom repository and use https://github.com/laurensdehoorne/AlsavoProHomeAssistantIntegration
 Download from HACS.
 Restart Home Assistant and go to *Devices and Services* and press *+Add integration*.
 Search for *AlsavoPro* and add it.
@@ -26,6 +26,11 @@ Ip-address and port can be one of two:
 - If you want to bypass the cloud, enter the heat pumps ip-address and use port 1194.
 
 ## Changelog
+
+### 1.0.2
+- Fixed `set_config` recursive retry replaced with iterative loop to prevent stack overflow and stale `_online` state
+- Fixed `is_online` now correctly reflects live connection state instead of stale data presence
+- Fixed `Payload.get_value` off-by-one bounds check
 
 ### 1.0.1
 - Fixed `NoneType object is not subscriptable` crash when pump is temporarily offline during auth challenge

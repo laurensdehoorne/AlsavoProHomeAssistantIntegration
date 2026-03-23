@@ -46,22 +46,22 @@ class AlsavoPro:
 
     async def set_config(self, idx: int, value: int):
         _LOGGER.debug(f"set_config({idx}, {value})")
-        try:
-            await self._session.connect(self._ip_address, int(self._port_no), int(self._serial_no), self._password)
-            await self._session.set_config(idx, value)
-        except Exception as e:
-            if self._set_retries < MAX_SET_CONFIG_RETRIES:
-                self._set_retries += 1
-                await self.set_config(idx, value)
+        for attempt in range(MAX_SET_CONFIG_RETRIES):
+            try:
+                await self._session.connect(self._ip_address, int(self._port_no), int(self._serial_no), self._password)
+                await self._session.set_config(idx, value)
                 self._online = True
-            else:
-                self._set_retries = 0
-                _LOGGER.error(f"Unable to set config: {idx}, {value} Error: {e}")
-                self._online = False
+                return
+            except Exception as e:
+                _LOGGER.warning(f"Set config attempt {attempt + 1} failed: {e}")
+                if attempt + 1 < MAX_SET_CONFIG_RETRIES:
+                    await asyncio.sleep(2)
+        _LOGGER.error(f"Unable to set config: {idx}, {value} after max retries")
+        self._online = False
 
     @property
     def is_online(self) -> bool:
-        return self._data.parts > 0
+        return self._online
 
     @property
     def unique_id(self):
@@ -290,7 +290,7 @@ class Payload:
         self.data = []
 
     def get_value(self, idx):
-        if idx - self.startIdx < 0 or idx - self.startIdx > self.data.__len__():
+        if idx - self.startIdx < 0 or idx - self.startIdx >= self.data.__len__():
             return 0
         return self.data[idx - self.startIdx]
 
