@@ -25,5 +25,12 @@ Ip-address and port can be one of two:
 - If you want to use the cloud, set IP-address to 47.254.157.150 and port to 51192.
 - If you want to bypass the cloud, enter the heat pumps ip-address and use port 1194.
 
+## Changelog
+
+### 1.0.1
+- Fixed `NoneType object is not subscriptable` crash when pump is temporarily offline during auth challenge
+- Fixed `unpack requires a buffer of X bytes` error when receiving truncated UDP packets
+- Added 2-second delay between update retries so the pump has time to recover when briefly offline
+
 ## AlsavoCtrl
 This code is very much based on AlsavoCtrl: https://github.com/strandborg/AlsavoCtrl

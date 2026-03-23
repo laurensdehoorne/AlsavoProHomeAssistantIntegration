@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import logging
 import random
@@ -38,6 +39,8 @@ class AlsavoPro:
                     return
             except Exception as e:
                 _LOGGER.warning(f"Update attempt {attempt + 1} failed: {e}")
+                if attempt + 1 < MAX_UPDATE_RETRIES:
+                    await asyncio.sleep(2)
         _LOGGER.error("Unable to update after max retries")
         self._online = False
 
@@ -296,6 +299,8 @@ class Payload:
         unpacked_data = struct.unpack('!IHHHH', data[0:12])
         obj = Payload(unpacked_data[0], unpacked_data[1], unpacked_data[2], unpacked_data[3], unpacked_data[4])
         if obj.subType == 1 or obj.subType == 2:
+            if len(data) < 12 + obj.size:
+                raise ValueError(f"Truncated payload: got {len(data)} bytes, need {12 + obj.size}")
             obj.data = struct.unpack('>' + 'H' * (obj.size // 2), data[12:12 + obj.size])
         else:
             obj.startIdx = 0
@@ -407,6 +412,8 @@ class AlsavoSocketCom:
     async def get_auth_challenge(self):
         auth_intro = AuthIntro(self.clientToken, self.serialQ)
         response = await self.send_and_receive(bytes(auth_intro.pack()))
+        if response is None:
+            raise ConnectionError("No response to auth challenge (timeout)")
         return AuthChallenge.unpack(response[0])
 
     async def send_auth_response(self, ctx):
