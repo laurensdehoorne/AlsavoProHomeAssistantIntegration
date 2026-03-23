@@ -156,6 +156,10 @@ Preset modes control fan/compressor power: **Silent**, **Smart**, **Powerful**.
 ### 1.0.4
 - Added Auto HVAC mode (maps to pump's internal auto mode)
 - Added 18 new sensors: compressor input temp, EEV opening, compressor speed, device status code, heating max/cooling min temps, manual settings, defrost config, timer config, and more
+- Fixed `ClimateEntityFeature.TURN_ON`/`TURN_OFF` missing from supported features (required in HA 2024.2+)
+- Fixed `hvac_mode` returning `None` for unknown operating modes, now falls back to `HVACMode.OFF`
+- Fixed `AlsavoProErrorSensor` missing `available` property, entity now correctly reflects online/offline state
+- Removed unused imports in `climate.py` and `sensor.py`
 
 ### 1.0.3
 - Full alarm code decoding for all EE (EE01–EE28) and PP (PP01–PP11) fault codes across registers 48–50

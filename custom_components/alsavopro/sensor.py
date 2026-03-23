@@ -10,8 +10,6 @@ from .const import (
 
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
 )
 
 
@@ -419,6 +417,10 @@ class AlsavoProErrorSensor(CoordinatorEntity, SensorEntity):
     def unique_id(self):
         """Return a unique ID."""
         return f"{self._data_handler.unique_id}_{self._name}"
+
+    @property
+    def available(self) -> bool:
+        return self._data_handler.is_online
 
     @property
     def native_value(self):

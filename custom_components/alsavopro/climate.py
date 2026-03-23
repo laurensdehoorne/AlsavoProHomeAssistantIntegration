@@ -1,7 +1,6 @@
 import logging
 
 from homeassistant.components.climate import (
-    PLATFORM_SCHEMA,
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode
@@ -18,8 +17,6 @@ from homeassistant.const import (
 
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
 )
 
 from . import AlsavoProDataCoordinator
@@ -48,7 +45,12 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+        return (
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.PRESET_MODE
+            | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TURN_OFF
+        )
 
     @property
     def unique_id(self):
@@ -77,7 +79,7 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         if not self._data_handler.is_power_on:
             return HVACMode.OFF
 
-        return operating_mode_map.get(self._data_handler.operating_mode)
+        return operating_mode_map.get(self._data_handler.operating_mode, HVACMode.OFF)
 
     @property
     def preset_mode(self):
