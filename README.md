@@ -73,7 +73,89 @@ The integration exposes four alarm code sensors (`alarm_code_1` through `alarm_c
 | PP10 | Coil pipe temperature too high protection (cooling mode) |
 | PP11 | Water temperature (T2) too low protection (cooling mode) |
 
+## Climate
+
+The integration exposes a climate entity with the following HVAC modes:
+
+| Mode | Description |
+|------|-------------|
+| Heat | Heating mode |
+| Cool | Cooling mode |
+| Auto | Automatic mode (heat or cool as needed) |
+| Off  | Power off |
+
+Preset modes control fan/compressor power: **Silent**, **Smart**, **Powerful**.
+
+## Sensors
+
+### Temperature sensors
+
+| Sensor | Description |
+|--------|-------------|
+| Water In | Inlet water temperature |
+| Water Out | Outlet water temperature |
+| Ambient | Ambient air temperature |
+| Cold pipe | Cold pipe temperature |
+| Heating pipe | Heating pipe temperature |
+| IPM module | IPM module temperature |
+| Exhaust temperature | Exhaust temperature |
+| Compressor input temperature | Compressor input temperature |
+| Heating max temperature | Maximum allowed heating setpoint |
+| Cooling min temperature | Minimum allowed cooling setpoint |
+| Defrost in temperature | Temperature threshold to start defrost |
+| Defrost out temperature | Heating pipe temperature to end defrost |
+| Water temperature calibration | Offset applied to all temperature readings |
+| Heating mode target | Heating setpoint |
+| Cooling mode target | Cooling setpoint |
+| Auto mode target | Auto mode setpoint |
+
+### Operational sensors
+
+| Sensor | Description |
+|--------|-------------|
+| Fan speed | Fan speed in RPM |
+| Compressor | Compressor current (A) |
+| Compressor running frequency | Compressor frequency (Hz) |
+| Compressor speed setting | 0=off, 1=P1 40Hz … 5=P5 82Hz |
+| EEV opening | Electronic exhaust valve opening (0–450) |
+| Frequency limit code | Active frequency limit code |
+| System status code | System status code |
+| System running code | 3=heating, 2=defrost |
+| Device status code | Device status code |
+
+### Config/diagnostic sensors
+
+| Sensor | Description |
+|--------|-------------|
+| Power mode | 0=Silent, 1=Smart, 2=Powerful |
+| Manual frequency setting | Manual compressor frequency (debug mode) |
+| Manual EEV setting | Manual EEV setting (debug mode) |
+| Manual fan speed setting | Manual fan speed (debug mode) |
+| Defrost in time | Minimum time between defrost cycles (minutes) |
+| Defrost out time | Maximum defrost duration (minutes) |
+| Hot over | High temperature threshold |
+| Cold over | Low temperature threshold |
+| Current time | Device clock (hi byte=hours, lo byte=minutes) |
+| Timer on time | Scheduled power-on time |
+| Timer off time | Scheduled power-off time |
+| Device type | Device type code |
+| Main board HW revision | Hardware revision |
+| Main board SW revision | Software revision |
+| Manual HW code | Manual hardware code |
+| Manual SW code | Manual software code |
+
+### Alarm sensors
+
+| Sensor | Description |
+|--------|-------------|
+| Alarm code 1–4 | Raw alarm register values (registers 48–51) |
+| Error messages | Decoded human-readable alarm messages |
+
 ## Changelog
+
+### 1.0.4
+- Added Auto HVAC mode (maps to pump's internal auto mode)
+- Added 18 new sensors: compressor input temp, EEV opening, compressor speed, device status code, heating max/cooling min temps, manual settings, defrost config, timer config, and more
 
 ### 1.0.3
 - Full alarm code decoding for all EE (EE01–EE28) and PP (PP01–PP11) fault codes across registers 48–50

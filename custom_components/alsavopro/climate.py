@@ -70,7 +70,8 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         """Return hvac operation i.e. heat, cool mode."""
         operating_mode_map = {
             0: HVACMode.COOL,
-            1: HVACMode.HEAT
+            1: HVACMode.HEAT,
+            2: HVACMode.AUTO,
         }
 
         if not self._data_handler.is_power_on:
@@ -88,7 +89,8 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         """Return nice icon for heater."""
         hvac_mode_icons = {
             HVACMode.HEAT: "mdi:fire",
-            HVACMode.COOL: "mdi:snowflake"
+            HVACMode.COOL: "mdi:snowflake",
+            HVACMode.AUTO: "mdi:autorenew",
         }
 
         return hvac_mode_icons.get(self.hvac_mode, "mdi:hvac-off")
@@ -96,7 +98,7 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
     @property
     def hvac_modes(self):
         """Return the list of available hvac operation modes."""
-        return [HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF]
+        return [HVACMode.HEAT, HVACMode.COOL, HVACMode.AUTO, HVACMode.OFF]
 
     @property
     def preset_modes(self):
@@ -108,7 +110,8 @@ class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
         hvac_mode_actions = {
             HVACMode.OFF: self._data_handler.set_power_off,
             HVACMode.COOL: self._data_handler.set_cooling_mode,
-            HVACMode.HEAT: self._data_handler.set_heating_mode
+            HVACMode.HEAT: self._data_handler.set_heating_mode,
+            HVACMode.AUTO: self._data_handler.set_auto_mode,
         }
 
         action = hvac_mode_actions.get(hvac_mode)
