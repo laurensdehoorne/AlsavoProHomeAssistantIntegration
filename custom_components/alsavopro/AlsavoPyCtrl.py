@@ -5,7 +5,7 @@ import random
 import struct
 from datetime import datetime, timezone
 from enum import Enum
-from custom_components.alsavopro.const import MODE_TO_CONFIG, NO_WATER_FLUX, WATER_TEMP_TOO_LOW, MAX_UPDATE_RETRIES, MAX_SET_CONFIG_RETRIES
+from custom_components.alsavopro.const import MODE_TO_CONFIG, ALARM_REGISTER_48, ALARM_REGISTER_49, ALARM_REGISTER_50, MAX_UPDATE_RETRIES, MAX_SET_CONFIG_RETRIES
 from .udpclient import UDPClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -138,12 +138,13 @@ class AlsavoPro:
 
     @property
     def errors(self):
-        error = ""
-        if self.get_status_value(48) & 0x4 == 0x4:
-            error += NO_WATER_FLUX
-        if self.get_status_value(49) & 0x400 == 0x400:
-            error += WATER_TEMP_TOO_LOW
-        return error
+        errors = []
+        for reg, alarm_map in [(48, ALARM_REGISTER_48), (49, ALARM_REGISTER_49), (50, ALARM_REGISTER_50)]:
+            value = self.get_status_value(reg)
+            for bit, description in alarm_map.items():
+                if value & bit:
+                    errors.append(description)
+        return "\n".join(errors)
 
     async def set_power_off(self):
         await self.set_config(4, self._data.get_config_value(4) & 0xFFDF)
