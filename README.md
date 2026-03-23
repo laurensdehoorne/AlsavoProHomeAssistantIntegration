@@ -21,6 +21,9 @@ Ip-address and port can be one of two:
 - If you want to use the cloud, set IP-address to 47.254.157.150 and port to 51192.
 - If you want to bypass the cloud, enter the heat pumps ip-address and use port 1194.
 
+## Parameter setting
+To access Alsavo Pro heat pump parameters, click "Parameter" in the app and enter password 0757. Key settings include water pump operating modes (P03), input calibration, temperature units, and system diagnostics. These settings allow control over water pump behavior (constant/compressor-dependent) and troubleshooting
+
 ## Alarm codes
 
 The integration exposes four alarm code sensors (`alarm_code_1` through `alarm_code_4`) that reflect the raw values of the pump's status registers. The `errors` attribute decodes all active alarms into human-readable messages.
