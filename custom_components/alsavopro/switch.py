@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable
 
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AlsavoProDataCoordinator
@@ -50,6 +51,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class AlsavoProSwitch(CoordinatorEntity, SwitchEntity):
+    _attr_entity_category = EntityCategory.CONFIG
+
     def __init__(self, coordinator: AlsavoProDataCoordinator, spec: AlsavoSwitchSpec):
         super().__init__(coordinator)
         self._coordinator = coordinator
