@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0] - 2026-06-16
+
+### Added
+- **`binary_sensor` platform** — three new binary sensors:
+  - **Frost protection** (`device_class: cold`) — on when the pump's anti-freeze protection (PP07) is active. Reads alarm register 50 bit `0x40`, matching this firmware's register layout.
+  - **Connectivity** (`device_class: connectivity`) — stays available to report `off` when the pump goes offline.
+  - **Alarm** (`device_class: problem`) — on when any alarm is active, with the decoded message in the `error_message` attribute.
+- **Device registry grouping** — all entities (sensors, climate, numbers, switches, times, binary sensors) now attach to a single Alsavo Pro *device* via a shared `AlsavoProEntity` mixin, with manufacturer/model/serial and live HW/SW versions. Entity IDs and names are unchanged — entities just group under one device card.
+
 ## [1.1.0] - 2026-05-17
 
 ### Added

@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta
 
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -24,7 +25,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor", "climate", "number", "switch", "time"]
+PLATFORMS = ["sensor", "binary_sensor", "climate", "number", "switch", "time"]
 
 # A single update() call performs the full UDP handshake + query. Allow generous
 # headroom so a momentarily-slow device doesn't get cancelled mid-handshake.
@@ -116,3 +117,24 @@ class AlsavoProDataCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(
                 f"Alsavo Pro unreachable after {OFFLINE_TOLERANCE} attempts: {err}"
             ) from err
+
+
+class AlsavoProEntity:
+    """Mixin that attaches every entity to a single Alsavo Pro device.
+
+    Entity classes mix this in alongside CoordinatorEntity; it only adds the
+    device_info link, so existing entity IDs and names are unchanged — the
+    entities just get grouped under one device card in the registry.
+    """
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._data_handler.unique_id)},
+            name=self._data_handler.name,
+            manufacturer="Alsavo / Zealux / Swim&Fun",
+            model="Pro pool heat pump",
+            serial_number=str(self._data_handler.serial_no),
+            hw_version=str(self._data_handler.hardware_version),
+            sw_version=str(self._data_handler.software_version),
+        )

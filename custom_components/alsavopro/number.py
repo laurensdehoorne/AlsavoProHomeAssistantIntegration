@@ -11,7 +11,7 @@ from homeassistant.const import UnitOfTemperature, UnitOfTime
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import AlsavoProDataCoordinator
+from . import AlsavoProDataCoordinator, AlsavoProEntity
 from .AlsavoPyCtrl import AlsavoPro
 from .const import DOMAIN
 
@@ -100,7 +100,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(AlsavoProNumber(coordinator, spec) for spec in NUMBER_SPECS)
 
 
-class AlsavoProNumber(CoordinatorEntity, NumberEntity):
+class AlsavoProNumber(AlsavoProEntity, CoordinatorEntity, NumberEntity):
     _attr_mode = NumberMode.BOX
     _attr_entity_category = EntityCategory.CONFIG
 

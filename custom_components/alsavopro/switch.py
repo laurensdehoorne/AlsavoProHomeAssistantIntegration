@@ -6,7 +6,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import AlsavoProDataCoordinator
+from . import AlsavoProDataCoordinator, AlsavoProEntity
 from .AlsavoPyCtrl import AlsavoPro
 from .const import DOMAIN
 
@@ -50,7 +50,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(AlsavoProSwitch(coordinator, spec) for spec in SWITCH_SPECS)
 
 
-class AlsavoProSwitch(CoordinatorEntity, SwitchEntity):
+class AlsavoProSwitch(AlsavoProEntity, CoordinatorEntity, SwitchEntity):
     _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(self, coordinator: AlsavoProDataCoordinator, spec: AlsavoSwitchSpec):

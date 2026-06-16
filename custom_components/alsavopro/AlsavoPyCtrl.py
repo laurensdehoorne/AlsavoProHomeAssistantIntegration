@@ -99,6 +99,10 @@ class AlsavoPro:
         return self._online
 
     @property
+    def serial_no(self):
+        return self._serial_no
+
+    @property
     def unique_id(self):
         return f"{self._name}_{self._serial_no}"
 
@@ -167,6 +171,26 @@ class AlsavoPro:
                 if value & bit:
                     errors.append(description)
         return "\n".join(errors)
+
+    @property
+    def is_frost_protection(self):
+        """True when the pump's anti-freeze protection (PP07) is active.
+
+        PP07 lives in alarm register 50 bit 0x40 in this firmware's status
+        layout (see ALARM_REGISTER_50 in const.py) — not register 49 as some
+        forks assume.
+        """
+        return self.get_status_value(50) & 0x40 == 0x40
+
+    @property
+    def hardware_version(self):
+        """Main board hardware revision (status register 65)."""
+        return self.get_status_value(65)
+
+    @property
+    def software_version(self):
+        """Main board software revision (status register 66)."""
+        return self.get_status_value(66)
 
     async def set_power_off(self):
         async with self._config4_lock:
