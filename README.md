@@ -214,6 +214,18 @@ Below ~-7 °C ambient the air-source COP collapses; no defrost setting can compe
 | Alarm code 1–4 | Raw alarm register values (registers 48–51) |
 | Error messages | Decoded human-readable alarm messages |
 
+## Binary sensors
+
+| Sensor | Device class | Description |
+|--------|--------------|-------------|
+| Frost protection | cold | On when the pump's anti-freeze protection (PP07, register 50 bit `0x40`) is active. Useful as an automation trigger in winter. |
+| Connectivity | connectivity | On while the pump answers on the LAN; reports off when it goes offline (stays available so you can alert on it). |
+| Alarm | problem | On when any alarm is active; the decoded text is in the `error_message` attribute. |
+
+## Device grouping
+
+All entities are attached to a single **Alsavo Pro** device in the registry, so they appear together under one device card (Settings → Devices & Services → *device*), split into Sensors / Configuration / Diagnostic sections. The device exposes the pump's manufacturer, model, serial number, and live hardware/software revisions.
+
 
 ## AlsavoCtrl
 This code is very much based on AlsavoCtrl: https://github.com/strandborg/AlsavoCtrl

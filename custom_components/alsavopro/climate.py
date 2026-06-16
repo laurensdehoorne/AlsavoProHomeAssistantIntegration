@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
 
-from . import AlsavoProDataCoordinator
+from . import AlsavoProDataCoordinator, AlsavoProEntity
 from .const import (
     DOMAIN,
     POWER_MODE_MAP,
@@ -51,7 +51,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([AlsavoProClimate(hass.data[DOMAIN][entry.entry_id])])
 
 
-class AlsavoProClimate(CoordinatorEntity, ClimateEntity):
+class AlsavoProClimate(AlsavoProEntity, CoordinatorEntity, ClimateEntity):
     """ Climate platform for Alsavo Pro pool heater """
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
