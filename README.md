@@ -2,6 +2,28 @@
 
 Custom component for controlling pool heatpumps that uses the Alsavo Pro app in Home Assistant.
 
+## Why this fork
+
+This fork builds on the original integration with substantially more control coverage and protocol robustness. Comparison against the upstream [`goev`](https://github.com/goev/AlsavoProHomeAssistantIntegration) fork:
+
+| Capability | This fork | upstream `goev` |
+|---|---|---|
+| Writable settings | **10 entities** — heat/cool/auto target, defrost in/out temp + time, water compensation, pump-run mode, timer on/off times + enables | 2 — target temp, water calibration |
+| `switch` platform | ✅ timer enables, pump continuous-run | ❌ |
+| `time` platform | ✅ daily on/off schedule (HH:MM) | ❌ |
+| UDP session | **Persistent across the 60 s poll** (~10 ms/read), fresh handshake per write | Full re-auth on every single call (~56 ms each) |
+| Control reliability | Writes confirmed against a freshly-authenticated session; 5 s follow-up refresh reads the settled state | — |
+| Device-type awareness | **HVAC modes filtered per device type** (Single/FixCh/FreqCh/FixAll/FreqAll) | Fixed mode list |
+| `Cold over` reading | **Signed** (correctly shows negative offsets) | Unsigned (shows e.g. 65516 for −20) |
+| Frost-protection sensor | Reads PP07 from alarm register 50 (this firmware's layout) | Reads register 49 |
+| Robustness | Silent-zero/empty-packet detection, 5-failure offline tolerance, follow-up-timer cleanup on unload | — |
+| Config flow | LAN-only (dead cloud-relay option removed) | Still offers the retired cloud endpoint |
+| Settings tuning source | All ranges/encodings cross-checked against the official Android APK | — |
+
+Both forks group entities under a single device (registry `DeviceInfo`) and split them into Sensors / Configuration / Diagnostic categories.
+
+> Tradeoff for transparency: upstream uses Home Assistant's newer `has_entity_name` naming, while this fork keeps the original `alsavopro_<device>_<sensor>` entity-ID scheme to avoid renaming existing entities and breaking dashboards/automations on upgrade.
+
 ## Install
 #### Manually
 In Home Assistant, create a folder under *custom_components* named *AlsavoPro* and copy all the content of this project to that folder.
