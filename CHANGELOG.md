@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.2.1] - 2026-09-25
 
 ### Fixed
 - **Offline tolerance was ignored** — entities went unavailable on the first failed poll instead of after 5 consecutive failures. Availability (and the Connectivity sensor) now follow the coordinator.
