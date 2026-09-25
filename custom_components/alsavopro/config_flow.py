@@ -78,6 +78,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if new_password:
                 new_data = {**self._entry.data, CONF_PASSWORD: new_password}
                 self.hass.config_entries.async_update_entry(self._entry, data=new_data)
+                # The running AlsavoPro handler captured the old password at
+                # setup; reload so the new one is actually used.
+                self.hass.async_create_task(
+                    self.hass.config_entries.async_reload(self._entry.entry_id)
+                )
             return self.async_create_entry(title="", data={})
 
         return self.async_show_form(

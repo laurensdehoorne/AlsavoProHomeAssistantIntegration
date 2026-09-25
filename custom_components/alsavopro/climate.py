@@ -78,10 +78,6 @@ class AlsavoProClimate(AlsavoProEntity, CoordinatorEntity, ClimateEntity):
         return self._name
 
     @property
-    def available(self) -> bool:
-        return self._data_handler.is_online
-
-    @property
     def hvac_mode(self):
         if not self._data_handler.is_power_on:
             return HVACMode.OFF

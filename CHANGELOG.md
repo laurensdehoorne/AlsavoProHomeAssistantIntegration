@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **Offline tolerance was ignored** — entities went unavailable on the first failed poll instead of after 5 consecutive failures. Availability (and the Connectivity sensor) now follow the coordinator.
+- **Toggling two register-4 settings quickly reverted the first** (e.g. both timer switches, or a switch then an HVAC mode change within the 5 s follow-up window). The cached config value is now updated immediately after a successful write.
+- **Writes that got no ACK were reported as successful** — a timed-out `set_config` now raises and gets the usual re-auth + retry.
+- **A poll running alongside a write could break both**, since the write tears down and re-handshakes the shared session. All pump I/O is now serialized.
+- **Session left half-initialised when a poll timed out mid-handshake**, costing an extra failed round-trip on the next poll.
+- **`InvalidStateError` in the UDP client** when a late or duplicate datagram arrived.
+- **Error messages sensor failed with several alarms active** — HA's 255-character state limit is now respected; the full list is in the `error_message` attribute.
+- **Changing the password in options had no effect until HA restarted** — the entry now reloads.
+
 ## [1.2.0] - 2026-06-16
 
 ### Added

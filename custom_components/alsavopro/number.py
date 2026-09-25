@@ -125,10 +125,6 @@ class AlsavoProNumber(AlsavoProEntity, CoordinatorEntity, NumberEntity):
         return f"{self._data_handler.unique_id}_{self._spec.key}"
 
     @property
-    def available(self) -> bool:
-        return self._data_handler.is_online
-
-    @property
     def native_value(self) -> float:
         return self._spec.getter(self._data_handler)
 

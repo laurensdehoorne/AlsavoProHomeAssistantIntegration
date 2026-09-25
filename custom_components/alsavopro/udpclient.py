@@ -21,11 +21,15 @@ class UDPClient:
             self.transport.sendto(self.message)
 
         def datagram_received(self, data, addr):
-            self.future.set_result(data)
+            # A second datagram (or one arriving after timeout) must not try
+            # to resolve the future again — that raises InvalidStateError.
+            if not self.future.done():
+                self.future.set_result(data)
             self.transport.close()
 
         def error_received(self, exc):
-            self.future.set_exception(exc)
+            if not self.future.done():
+                self.future.set_exception(exc)
 
         def connection_lost(self, exc):
             if not self.future.done():
