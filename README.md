@@ -15,7 +15,7 @@ This fork builds on the original integration with substantially more control cov
 | Control reliability | Writes confirmed against a freshly-authenticated session; 5 s follow-up refresh reads the settled state | — |
 | Device-type awareness | **HVAC modes filtered per device type** (Single/FixCh/FreqCh/FixAll/FreqAll) | Fixed mode list |
 | `Cold over` reading | **Signed** (correctly shows negative offsets) | Unsigned (shows e.g. 65516 for −20) |
-| Frost-protection sensor | Reads PP07 from alarm register 50 (this firmware's layout) | Reads register 49 |
+| Alarm decoding | Bit layout taken from the official app's fault table (PP codes in register 49, EE codes split across 48/49/50) | — |
 | Robustness | Silent-zero/empty-packet detection, 5-failure offline tolerance, follow-up-timer cleanup on unload | — |
 | Config flow | LAN-only (dead cloud-relay option removed) | Still offers the retired cloud endpoint |
 | Settings tuning source | All ranges/encodings cross-checked against the official Android APK | — |
@@ -65,53 +65,48 @@ Use REJECT, not DROP — REJECT replies with "unreachable" immediately so the pu
 
 The integration exposes four alarm code sensors (`alarm_code_1` through `alarm_code_4`) that reflect the raw values of the pump's status registers. The `errors` attribute decodes all active alarms into human-readable messages.
 
-### EE codes (Electrical/Component) — registers 48 & 49
+The codes are **not** laid out sequentially across the registers. The mapping below comes from the official Android app (`ClibZlycjInfo` defines alarm words 1–3 as status registers 48–50; `ParamsUtil.getFaultItems` maps each bit to its code).
 
-| Code | Malfunction |
-|------|-------------|
-| EE01 | High pressure failure |
-| EE02 | Low pressure failure |
-| EE03 | Water flow failure |
-| EE04 | Water temperature overheating protection (heating mode) |
-| EE05 | Exhaust temperature too high |
-| EE06 | Controller malfunction or communication failure |
-| EE07 | Compressor current protection |
-| EE08 | Communication failure (controller ↔ PCB) |
-| EE09 | Communication failure (PCB ↔ driver board) |
-| EE10 | VDC voltage too high protection |
-| EE11 | IPM module protection |
-| EE12 | VDC voltage too low protection |
-| EE13 | Input current too strong protection |
-| EE14 | IPM module thermal circuit abnormal |
-| EE15 | IPM module temperature too high protection |
-| EE16 | PFC module protection |
-| EE17 | DC fan failure |
-| EE18 | PFC module thermal circuit abnormal |
-| EE19 | PFC module high temperature protection |
-| EE20 | Input power failure |
-| EE21 | Software control failure |
-| EE22 | Current detection circuit failure |
-| EE23 | Compressor start failure |
-| EE24 | Ambient temperature sensor failure (driving board) |
-| EE25 | Compressor phase failure |
-| EE26 | 4-way valve reversal failure |
-| EE27 | EEPROM data reading failure |
-| EE28 | Inter-chip communication failure (main control board) |
-
-### PP codes (Protection/Sensor) — register 50
-
-| Code | Malfunction |
-|------|-------------|
-| PP01 | Inlet water temperature sensor failure |
-| PP02 | Outlet water temperature sensor failure |
-| PP03 | Heating coil pipe sensor failure |
-| PP04 | Gas return sensor failure |
-| PP05 | Ambient temperature sensor failure |
-| PP06 | Exhaust temperature sensor failure |
-| PP07 | Anti-freezing protection (winter) |
-| PP08 | Low ambient temperature protection |
-| PP10 | Coil pipe temperature too high protection (cooling mode) |
-| PP11 | Water temperature (T2) too low protection (cooling mode) |
+| Register | Bit | Code | Malfunction |
+|----------|-----|------|-------------|
+| 48 | `0x0001` | EE01 | High pressure failure |
+| 48 | `0x0002` | EE02 | Low pressure failure |
+| 48 | `0x0004` | EE03 | Water flow failure |
+| 48 | `0x0008` | EE04 | Water temperature overheating protection (heating mode) |
+| 48 | `0x0010` | EE05 | Exhaust temperature too high |
+| 48 | `0x0020` | EE06 | Controller malfunction or communication failure |
+| 48 | `0x0040` | EE07 | Compressor current protection |
+| 48 | `0x0080` | EE08 | Communication failure (controller ↔ PCB) |
+| 48 | `0x0100` | EE09 | Communication failure (PCB ↔ driver board) |
+| 48 | `0x0200` | EE10 | VDC voltage too high protection |
+| 48 | `0x0400` | EE11 | IPM module protection |
+| 48 | `0x0800` | EE12 | VDC voltage too low protection |
+| 48 | `0x1000` | EE13 | Input current too strong protection |
+| 48 | `0x2000` | EE17 | DC fan failure |
+| 48 | `0x4000` | EE14 | IPM module thermal circuit abnormal |
+| 48 | `0x8000` | EE15 | IPM module temperature too high protection |
+| 49 | `0x0001` | PP01 | Inlet water temperature sensor failure |
+| 49 | `0x0002` | PP02 | Outlet water temperature sensor failure |
+| 49 | `0x0004` | PP03 | Heating coil pipe sensor failure |
+| 49 | `0x0008` | PP04 | Gas return sensor failure |
+| 49 | `0x0010` | PP05 | Ambient temperature sensor failure |
+| 49 | `0x0020` | PP06 | Exhaust temperature sensor failure |
+| 49 | `0x0040` | PP07 | Anti-freezing protection (winter) |
+| 49 | `0x0080` | PP08 | Low ambient temperature protection |
+| 49 | `0x0200` | PP10 | Coil pipe temperature too high protection (cooling mode) |
+| 49 | `0x0400` | PP11 | Water temperature (T2) too low protection (cooling mode) |
+| 49 | `0x0800` | EE16 | PFC module protection |
+| 49 | `0x1000` | EE18 | PFC module thermal circuit abnormal |
+| 49 | `0x2000` | EE19 | PFC module high temperature protection |
+| 49 | `0x4000` | EE20 | Input power failure |
+| 49 | `0x8000` | EE21 | Software control failure |
+| 50 | `0x0001` | EE22 | Current detection circuit failure |
+| 50 | `0x0002` | EE23 | Compressor start failure |
+| 50 | `0x0004` | EE24 | Ambient temperature sensor failure (driving board) |
+| 50 | `0x0008` | EE25 | Compressor phase failure |
+| 50 | `0x0010` | EE26 | 4-way valve reversal failure |
+| 50 | `0x0020` | EE27 | EEPROM data reading failure |
+| 50 | `0x0040` | EE28 | Inter-chip communication failure (main control board) |
 
 ## Climate
 
@@ -240,7 +235,7 @@ Below ~-7 °C ambient the air-source COP collapses; no defrost setting can compe
 
 | Sensor | Device class | Description |
 |--------|--------------|-------------|
-| Frost protection | cold | On when the pump's anti-freeze protection (PP07, register 50 bit `0x40`) is active. Useful as an automation trigger in winter. |
+| Frost protection | cold | On when the pump's anti-freeze protection (PP07, register 49 bit `0x40`) is active. Useful as an automation trigger in winter. |
 | Connectivity | connectivity | On while the pump answers on the LAN; reports off when it goes offline (stays available so you can alert on it). |
 | Alarm | problem | On when any alarm is active; the decoded text is in the `error_message` attribute. |
 

@@ -187,11 +187,11 @@ class AlsavoPro:
     def is_frost_protection(self):
         """True when the pump's anti-freeze protection (PP07) is active.
 
-        PP07 lives in alarm register 50 bit 0x40 in this firmware's status
-        layout (see ALARM_REGISTER_50 in const.py) — not register 49 as some
-        forks assume.
+        PP07 is alarm register 49 (ALARM2) bit 0x40, per the official app's
+        fault table (see ALARM_REGISTER_49 in const.py). Register 50 bit 0x40
+        is EE28, not PP07.
         """
-        return self.get_status_value(50) & 0x40 == 0x40
+        return self.get_status_value(49) & 0x40 == 0x40
 
     @property
     def hardware_version(self):
@@ -231,6 +231,7 @@ class AlsavoPro:
     #   bit 0-1: mode (0=cool, 1=heat, 2=auto) — set via set_*_mode
     #   bit 2  : timer-on enable
     #   bit 3  : pump run mode (continuous vs cycling)
+    #   bit 4  : electronic valve style (read-only in the app)
     #   bit 5  : power on/off — set via set_power_on/off
     #   bit 6  : debug mode (intentionally not exposed)
     #   bit 7  : timer-off enable
