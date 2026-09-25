@@ -64,10 +64,6 @@ class AlsavoProTime(AlsavoProEntity, CoordinatorEntity, TimeEntity):
         return f"{self._data_handler.unique_id}_{self._spec.key}"
 
     @property
-    def available(self) -> bool:
-        return self._data_handler.is_online
-
-    @property
     def native_value(self) -> time | None:
         hour, minute = self._spec.getter(self._data_handler)
         if hour > 23 or minute > 59:

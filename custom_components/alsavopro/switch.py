@@ -69,10 +69,6 @@ class AlsavoProSwitch(AlsavoProEntity, CoordinatorEntity, SwitchEntity):
         return f"{self._data_handler.unique_id}_{self._spec.key}"
 
     @property
-    def available(self) -> bool:
-        return self._data_handler.is_online
-
-    @property
     def is_on(self) -> bool:
         return self._spec.getter(self._data_handler)
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **Offline tolerance was ignored** — entities went unavailable on the first failed poll instead of after 5 consecutive failures. Availability (and the Connectivity sensor) now follow the coordinator.
+- **Toggling two register-4 settings quickly reverted the first** (e.g. both timer switches, or a switch then an HVAC mode change within the 5 s follow-up window). The cached config value is now updated immediately after a successful write.
+- **Writes that got no ACK were reported as successful** — a timed-out `set_config` now raises and gets the usual re-auth + retry.
+- **A poll running alongside a write could break both**, since the write tears down and re-handshakes the shared session. All pump I/O is now serialized.
+- **Session left half-initialised when a poll timed out mid-handshake**, costing an extra failed round-trip on the next poll.
+- **`InvalidStateError` in the UDP client** when a late or duplicate datagram arrived.
+- **Error messages sensor failed with several alarms active** — HA's 255-character state limit is now respected; the full list is in the `error_message` attribute.
+- **Changing the password in options had no effect until HA restarted** — the entry now reloads.
+- **Alarm codes were decoded against the wrong bit layout.** The official Android app (v1.8) defines alarm words 1–3 as status registers 48–50 with a non-sequential code order: PP01–PP11 are in register **49**, EE16–EE21 are split across 48/49 and EE22–EE28 are in register 50. The error-messages sensor and Alarm binary sensor now use that layout.
+- **Frost protection never fired** — it read register 50 bit `0x40` (EE28 in the app's table) instead of PP07 at register 49 bit `0x40`.
+
 ## [1.2.0] - 2026-06-16
 
 ### Added

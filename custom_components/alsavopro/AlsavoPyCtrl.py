@@ -34,6 +34,9 @@ class AlsavoPro:
         self._online = False
         # Serialize read-modify-write on config register 4 (mode/power/timer bits).
         self._config4_lock = asyncio.Lock()
+        # Serialize all traffic on the shared session: a write disconnects and
+        # re-handshakes, which would otherwise break a poll running alongside it.
+        self._io_lock = asyncio.Lock()
 
     async def _ensure_connected(self):
         """Auth and establish a session if we don't have one. Idempotent."""
@@ -63,16 +66,17 @@ class AlsavoPro:
 
     async def update(self):
         _LOGGER.debug("update")
-        try:
-            data = await self._with_session_retry(self._session.query_all)
-        except Exception:
-            self._online = False
-            raise
-        if data is None:
-            self._online = False
-            raise ConnectionError("Empty response from heat pump")
-        self._data = data
-        self._online = True
+        async with self._io_lock:
+            try:
+                data = await self._with_session_retry(self._session.query_all)
+            except BaseException:
+                self._online = False
+                raise
+            if data is None:
+                self._online = False
+                raise ConnectionError("Empty response from heat pump")
+            self._data = data
+            self._online = True
 
     async def set_config(self, idx: int, value: int):
         _LOGGER.debug("set_config(%s, %s)", idx, value)
@@ -80,19 +84,26 @@ class AlsavoPro:
         # authenticated session: reusing a CSID/DSID from a prior poll gets
         # an ACK back but no state change. Force a fresh handshake before
         # every write to match the behaviour of the official Android app.
-        self._session.disconnect()
-        try:
-            await self._with_session_retry(self._session.set_config, idx, value)
-            self._online = True
-        except Exception:
-            self._online = False
-            raise
-        # The pump also invalidates the session immediately after a write —
-        # the next query on the same CSID/DSID returns a truncated packet
-        # that fails parsing. Drop the session now so the follow-up read
-        # does a fast fresh handshake instead of paying the failure-retry
-        # penalty (~2 s sleep + re-auth).
-        self._session.disconnect()
+        async with self._io_lock:
+            self._session.disconnect()
+            try:
+                await self._with_session_retry(self._session.set_config, idx, value)
+                self._online = True
+            except BaseException:
+                self._online = False
+                raise
+            finally:
+                # The pump also invalidates the session immediately after a
+                # write — the next query on the same CSID/DSID returns a
+                # truncated packet that fails parsing. Drop the session now so
+                # the follow-up read does a fast fresh handshake instead of
+                # paying the failure-retry penalty (~2 s sleep + re-auth).
+                self._session.disconnect()
+            # Reflect the write in the cached snapshot right away so a second
+            # read-modify-write on the same register (e.g. toggling two
+            # register-4 switches within the follow-up refresh window) builds
+            # on the new value instead of silently reverting the first change.
+            self._data.set_config_value(idx, value)
 
     @property
     def is_online(self) -> bool:
@@ -176,11 +187,11 @@ class AlsavoPro:
     def is_frost_protection(self):
         """True when the pump's anti-freeze protection (PP07) is active.
 
-        PP07 lives in alarm register 50 bit 0x40 in this firmware's status
-        layout (see ALARM_REGISTER_50 in const.py) — not register 49 as some
-        forks assume.
+        PP07 is alarm register 49 (ALARM2) bit 0x40, per the official app's
+        fault table (see ALARM_REGISTER_49 in const.py). Register 50 bit 0x40
+        is EE28, not PP07.
         """
-        return self.get_status_value(50) & 0x40 == 0x40
+        return self.get_status_value(49) & 0x40 == 0x40
 
     @property
     def hardware_version(self):
@@ -220,6 +231,7 @@ class AlsavoPro:
     #   bit 0-1: mode (0=cool, 1=heat, 2=auto) — set via set_*_mode
     #   bit 2  : timer-on enable
     #   bit 3  : pump run mode (continuous vs cycling)
+    #   bit 4  : electronic valve style (read-only in the app)
     #   bit 5  : power on/off — set via set_power_on/off
     #   bit 6  : debug mode (intentionally not exposed)
     #   bit 7  : timer-off enable
@@ -450,6 +462,13 @@ class Payload:
             return 0
         return self.data[idx - self.startIdx]
 
+    def set_value(self, idx, value):
+        pos = idx - self.startIdx
+        if 0 <= pos < len(self.data):
+            data = list(self.data)
+            data[pos] = value & 0xFFFF
+            self.data = data
+
     @staticmethod
     def unpack(data):
         unpacked_data = struct.unpack('!IHHHH', data[0:12])
@@ -488,6 +507,10 @@ class QueryResponse:
         if self.__config is None:
             return 0
         return self.__config.get_value(idx)
+
+    def set_config_value(self, idx: int, value: int):
+        if self.__config is not None:
+            self.__config.set_value(idx, value)
 
     def get_signed_status_value(self, idx: int):
         unsigned_int = self.get_status_value(idx)
@@ -612,7 +635,9 @@ class AlsavoSocketCom:
         val_l = (value & 0xff).to_bytes(1, 'big')
         # Wait for the pump's write-ACK so we know the command landed before
         # the caller schedules a follow-up poll.
-        await self.send_and_rcv_packet(b'\x09\x01\x00\x00\x00\x02\x00\x2e\x00\x02\x00\x04' + idx_h + idx_l + val_h + val_l)
+        resp = await self.send_and_rcv_packet(b'\x09\x01\x00\x00\x00\x02\x00\x2e\x00\x02\x00\x04' + idx_h + idx_l + val_h + val_l)
+        if resp is None:
+            raise ConnectionError(f"set_config({idx}): no ACK from heat pump")
 
     async def connect(self, server_ip, server_port, serial, password):
         if self.is_connected:
@@ -620,7 +645,7 @@ class AlsavoSocketCom:
         _LOGGER.debug("Connecting to Alsavo Pro")
         try:
             await self._do_handshake(server_ip, server_port, serial, password)
-        except Exception:
+        except BaseException:  # incl. CancelledError from the update timeout
             # Avoid leaving partial CSID/DSID/client state that would make
             # is_connected wrongly return True on the next call.
             self.disconnect()

@@ -416,13 +416,6 @@ class AlsavoProSensor(AlsavoProEntity, CoordinatorEntity, SensorEntity):
         """Return the name of the sensor."""
         return f"{DOMAIN}_{self._data_handler.name}_{self._name}"
 
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will reflect this.
-    @property
-    def available(self) -> bool:
-        """Return True if roller and hub is available."""
-        return self._data_handler.is_online
-
     @property
     def unique_id(self):
         """Return a unique ID."""
@@ -467,12 +460,17 @@ class AlsavoProErrorSensor(AlsavoProEntity, CoordinatorEntity, SensorEntity):
         return f"{self._data_handler.unique_id}_{self._name}"
 
     @property
-    def available(self) -> bool:
-        return self._data_handler.is_online
+    def native_value(self):
+        # HA rejects states longer than 255 chars; several simultaneous alarms
+        # easily exceed that. The full list is kept in the attributes.
+        errors = self._data_handler.errors
+        if len(errors) > 255:
+            return errors[:254] + "…"
+        return errors
 
     @property
-    def native_value(self):
-        return self._data_handler.errors
+    def extra_state_attributes(self):
+        return {"error_message": self._data_handler.errors}
 
     @property
     def icon(self):

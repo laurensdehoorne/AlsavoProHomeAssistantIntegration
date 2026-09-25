@@ -56,7 +56,9 @@ class AlsavoProConnectivitySensor(_AlsavoProBinarySensorBase):
 
     @property
     def is_on(self) -> bool:
-        return self._data_handler.is_online
+        # Follows the coordinator (not the raw per-poll flag) so it matches the
+        # other entities' availability and honours OFFLINE_TOLERANCE.
+        return self.coordinator.last_update_success
 
 
 class AlsavoProFrostProtectionSensor(_AlsavoProBinarySensorBase):
@@ -64,10 +66,6 @@ class AlsavoProFrostProtectionSensor(_AlsavoProBinarySensorBase):
     _attr_icon = "mdi:snowflake-alert"
     _label = "Frost protection"
     _key = "frost_protection"
-
-    @property
-    def available(self) -> bool:
-        return self._data_handler.is_online
 
     @property
     def is_on(self) -> bool:
@@ -79,10 +77,6 @@ class AlsavoProAlarmSensor(_AlsavoProBinarySensorBase):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _label = "Alarm"
     _key = "alarm"
-
-    @property
-    def available(self) -> bool:
-        return self._data_handler.is_online
 
     @property
     def is_on(self) -> bool:
