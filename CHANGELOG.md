@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.3] - 2026-10-17
+
+### Fixed
+- **A wrong password showed up as a cryptic parse error.** With a wrong password the pump still completes the auth handshake, but answers every command with cmd `0xf3`, code 7. That reply is now reported as "pump rejected the request (code 7) — wrong password?".
+
 ## [1.2.2] - 2026-10-17
 
 ### Changed

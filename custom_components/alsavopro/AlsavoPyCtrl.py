@@ -555,6 +555,10 @@ class QueryResponse:
         return obj
 
 
+class PumpRejectedError(ConnectionError):
+    """The pump accepted the session but refused the command (wrong password)."""
+
+
 def md5_hash(text):
     """ Simple hashing of password """
     md5 = hashlib.md5()
@@ -617,6 +621,20 @@ class AlsavoSocketCom:
             )
         return None
 
+    @staticmethod
+    def _raise_if_rejected(raw: bytes, what: str):
+        """Raise if the pump answered with a command rejection.
+
+        With a wrong password the auth handshake still ends in an "ok" (5), but
+        every command after it is answered with cmd 0xf3, payload code 7.
+        """
+        if len(raw) >= 17:
+            hdr = PacketHeader.unpack(raw[0:16])
+            if hdr.cmd == 0xf3 and raw[16] == 7:
+                raise PumpRejectedError(
+                    f"{what}: pump rejected the request (code 7) — wrong password?"
+                )
+
     async def query_all(self):
         """ Query all information from the heat pump """
         _LOGGER.debug("socket.query_all")
@@ -625,6 +643,7 @@ class AlsavoSocketCom:
             raise ConnectionError("query_all: no response")
         raw = resp[0]
         _LOGGER.debug("query_all response (%d bytes): %s", len(raw), raw.hex())
+        self._raise_if_rejected(raw, "query_all")
         result = QueryResponse.unpack(raw[16:])
         if not result.is_valid:
             # Include the packet so the failure can be diagnosed from the
@@ -649,6 +668,7 @@ class AlsavoSocketCom:
         resp = await self.send_and_rcv_packet(b'\x09\x01\x00\x00\x00\x02\x00\x2e\x00\x02\x00\x04' + idx_h + idx_l + val_h + val_l)
         if resp is None:
             raise ConnectionError(f"set_config({idx}): no ACK from heat pump")
+        self._raise_if_rejected(resp[0], f"set_config({idx})")
 
     async def connect(self, server_ip, server_port, serial, password):
         if self.is_connected:
