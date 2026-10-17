@@ -493,6 +493,7 @@ class QueryResponse:
         self.parts = parts
         self.__status = None
         self.__config = None
+        self.sub_types = []
 
     @property
     def is_valid(self):
@@ -544,6 +545,7 @@ class QueryResponse:
             except (ValueError, struct.error) as e:
                 _LOGGER.debug("Stopping payload parse early: %s", e)
                 break
+            obj.sub_types.append(payload.subType)
             if payload.subType == 1:
                 obj.__status = payload
             elif payload.subType == 2:
@@ -621,9 +623,18 @@ class AlsavoSocketCom:
         resp = await self.send_and_rcv_packet(b'\x08\x01\x00\x00\x00\x02\x00\x2e\xff\xff\x00\x00')
         if resp is None:
             raise ConnectionError("query_all: no response")
-        result = QueryResponse.unpack(resp[0][16:])
+        raw = resp[0]
+        _LOGGER.debug("query_all response (%d bytes): %s", len(raw), raw.hex())
+        result = QueryResponse.unpack(raw[16:])
         if not result.is_valid:
-            raise ConnectionError("query_all: response missing status or config section (unexpected packet?)")
+            # Include the packet so the failure can be diagnosed from the
+            # config entry's error reason without enabling debug logging.
+            hdr = PacketHeader.unpack(raw[0:16]) if len(raw) >= 16 else None
+            raise ConnectionError(
+                "query_all: response missing status or config section "
+                f"(cmd={hex(hdr.cmd) if hdr else '?'}, len={len(raw)}, "
+                f"subtypes={result.sub_types}, raw={raw[:96].hex()})"
+            )
         return result
 
     async def set_config(self, idx: int, value: int):

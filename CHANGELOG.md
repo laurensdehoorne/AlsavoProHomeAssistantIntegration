@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.2] - 2026-10-17
+
+### Changed
+- **Diagnostics for unparseable query responses** — when the pump answers a query without a status or config section, the error (shown as the config entry's retry reason) now includes the response command, length, parsed payload sub-types and the raw packet bytes. The full response is also logged at debug level.
+
 ## [1.2.1] - 2026-09-25
 
 ### Fixed
